@@ -81,6 +81,11 @@ userSchema.pre('save', function (next) {
   next();
 });
 
+userSchema.pre(/^find/, function (next) {
+  this.find({ active: { $ne: false } });
+  next();
+});
+
 userSchema.methods.correctPassword = async function (
   candidatePassword,
   userPassword
@@ -94,7 +99,6 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
       this.passwordChangedAt.getTime() / 1000,
       10
     );
-    gi;
 
     return JWTTimestamp < changedTimestamp;
   }
