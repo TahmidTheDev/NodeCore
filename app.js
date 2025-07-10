@@ -1,4 +1,5 @@
 import express from 'express';
+
 // import dotenv from 'dotenv';
 // dotenv.config();
 import morgan from 'morgan';
@@ -39,6 +40,7 @@ const apiLimit = rateLimit({
 app.use('/api', apiLimit);
 
 app.use(express.json({ limit: '10kb' }));
+
 app.use(sanitizeMongoMiddleware);
 app.use(sanitizeXSSMiddleware);
 
