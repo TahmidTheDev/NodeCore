@@ -71,24 +71,51 @@ export const signUp = catchAsync(async (req, res, next) => {
 
 export const login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body || {};
-  //check if email and password exit
+
   if (!email || !password) {
-    return next(new AppError('pleas provide email and password', 400));
-  }
-  //check if user exist and password is correct
-  const user = await User.findOne({ email }).select('+password');
-
-  if (!user || !(await user.correctPassword(password, user.password))) {
-    return next(new AppError('Incorrect email or Password', 401));
+    return next(new AppError('Please provide email and password', 400));
   }
 
-  // const token = signToken(user._id);
+  const user = await User.findOne({ email }).select(
+    '+password +loginAttempts +lockUntil'
+  );
+
+  if (!user) {
+    return next(new AppError('Incorrect email or password', 401));
+  }
+
+  // Check if user is locked
+  if (user.isLocked) {
+    const waitTime = Math.ceil((user.lockUntil - Date.now()) / 1000);
+    return next(
+      new AppError(
+        `Too many login attempts. Try again in ${waitTime} seconds.`,
+        429
+      )
+    );
+  }
+
+  const isCorrect = await user.correctPassword(password, user.password);
+
+  if (!isCorrect) {
+    user.loginAttempts += 1;
+
+    if (user.loginAttempts >= 3) {
+      const delay = Math.pow(2, user.loginAttempts - 3) * 60 * 1000; // 1m, 2m, 4m...
+      user.lockUntil = Date.now() + delay;
+    }
+
+    await user.save({ validateBeforeSave: false });
+
+    return next(new AppError('Incorrect email or password', 401));
+  }
+
+  // On successful login, reset loginAttempts and lockUntil
+  user.loginAttempts = 0;
+  user.lockUntil = undefined;
+  await user.save({ validateBeforeSave: false });
 
   createSendToken(user, 200, res);
-  // res.status(200).json({
-  //   status: 'success',
-  //   token,
-  // });
 });
 
 export const protect = catchAsync(async (req, res, next) => {
