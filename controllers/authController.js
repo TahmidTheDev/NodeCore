@@ -77,16 +77,18 @@ export const login = catchAsync(async (req, res, next) => {
   }
 
   const user = await User.findOne({ email }).select(
-    '+password +loginAttempts +lockUntil'
+    '+password +loginAttempts +lockUntil +failedRounds'
   );
 
   if (!user) {
     return next(new AppError('Incorrect email or password', 401));
   }
 
-  // Check if user is locked
-  if (user.isLocked) {
-    const waitTime = Math.ceil((user.lockUntil - Date.now()) / 1000);
+  const now = Date.now();
+
+  // If user is currently locked
+  if (user.lockUntil && user.lockUntil > now) {
+    const waitTime = Math.ceil((user.lockUntil - now) / 1000);
     return next(
       new AppError(
         `Too many login attempts. Try again in ${waitTime} seconds.`,
@@ -95,14 +97,28 @@ export const login = catchAsync(async (req, res, next) => {
     );
   }
 
+  // If lock expired, reset attempts (not failedRounds!)
+  if (user.lockUntil && user.lockUntil < now) {
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
+    await user.save({ validateBeforeSave: false });
+  }
+
+  // Check password correctness
   const isCorrect = await user.correctPassword(password, user.password);
 
   if (!isCorrect) {
     user.loginAttempts += 1;
 
     if (user.loginAttempts >= 3) {
-      const delay = Math.pow(2, user.loginAttempts - 3) * 60 * 1000; // 1m, 2m, 4m...
-      user.lockUntil = Date.now() + delay;
+      user.failedRounds += 1;
+
+      const delay = Math.min(
+        Math.pow(2, user.failedRounds - 1) * 60 * 1000, // exponential backoff
+        60 * 60 * 1000 // max 1 hour
+      );
+      user.lockUntil = now + delay;
+      user.loginAttempts = 0; // reset attempts after locking
     }
 
     await user.save({ validateBeforeSave: false });
@@ -110,11 +126,13 @@ export const login = catchAsync(async (req, res, next) => {
     return next(new AppError('Incorrect email or password', 401));
   }
 
-  // On successful login, reset loginAttempts and lockUntil
+  // On successful login, reset attempts and lock info
   user.loginAttempts = 0;
+  user.failedRounds = 0;
   user.lockUntil = undefined;
   await user.save({ validateBeforeSave: false });
 
+  // Issue JWT token and send response
   createSendToken(user, 200, res);
 });
 

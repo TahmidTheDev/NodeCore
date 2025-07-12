@@ -67,6 +67,7 @@ const userSchema = new mongoose.Schema(
     lockUntil: {
       type: Date,
     },
+    failedRounds: { type: Number, default: 0 },
   },
   {
     timestamps: true,
@@ -140,6 +141,8 @@ userSchema.methods.toJSON = function () {
     'passwordChangedAt',
     'createdAt',
     'updatedAt',
+    'loginAttempts',
+    'lockUntil',
   ];
 
   hiddenFields.forEach((field) => delete obj[field]);
