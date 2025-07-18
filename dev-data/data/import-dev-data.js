@@ -6,25 +6,16 @@ import Tour from '../../models/tourModel.js';
 
 const importData = async () => {
   try {
-    // 1. Connect to the database
     await connectDB();
 
-    // 2. Read the data file asynchronously using ES modules
     const data = await readFile(
-      'D:/starter12/dev-data/data/tours-simple.json',
+      'D:/starter12/dev-data/data/tours.json',
       'utf-8'
     );
     const tours = JSON.parse(data);
 
-    // 3. Delete all data from the Tour collection
-    await Tour.deleteMany(); // This will delete all documents in the collection
-    console.log('✅ All previous data deleted!');
-
-    // 4. Insert the new data into the database
     await Tour.create(tours);
     console.log('✅ Data successfully imported!');
-
-    // 5. Exit
     process.exit();
   } catch (err) {
     console.error('❌ Error importing data:', err);
@@ -32,4 +23,24 @@ const importData = async () => {
   }
 };
 
-importData();
+const deleteData = async () => {
+  try {
+    await connectDB();
+    await Tour.deleteMany();
+    console.log('✅ All previous data deleted!');
+    process.exit();
+  } catch (err) {
+    console.error('❌ Error deleting data:', err);
+    process.exit(1);
+  }
+};
+
+// ✅ Only run what the user asked for
+if (process.argv[2] === '--import') {
+  importData();
+} else if (process.argv[2] === '--delete') {
+  deleteData();
+} else {
+  console.log('❓ Please use either --import or --delete');
+  process.exit();
+}

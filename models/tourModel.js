@@ -78,6 +78,35 @@ const TourSchmea = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    startLocation: {
+      type: {
+        type: String,
+        default: 'Point',
+        enum: ['Point'],
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+        required: true,
+      },
+      address: String,
+      description: String,
+    },
+    locations: [
+      {
+        type: {
+          type: String,
+          default: 'Point',
+          enum: ['Point'],
+        },
+        coordinates: {
+          type: [Number], // [longitude, latitude]
+          required: true,
+        },
+        address: String,
+        description: String,
+        day: Number,
+      },
+    ],
   },
   {
     timestamps: true,
