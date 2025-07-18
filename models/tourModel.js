@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import slugify from 'slugify';
+import User from './userModel.js';
 // import validator from 'validator';
 
 const TourSchmea = new mongoose.Schema(
@@ -86,7 +87,7 @@ const TourSchmea = new mongoose.Schema(
       },
       coordinates: {
         type: [Number], // [longitude, latitude]
-        required: true,
+        // required: true,
       },
       address: String,
       description: String,
@@ -100,11 +101,17 @@ const TourSchmea = new mongoose.Schema(
         },
         coordinates: {
           type: [Number], // [longitude, latitude]
-          required: true,
+          // required: true,
         },
         address: String,
         description: String,
         day: Number,
+      },
+    ],
+    guides: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User', // Reference to the User model
       },
     ],
   },
@@ -120,18 +127,25 @@ TourSchmea.virtual('durationWeeks').get(function () {
 });
 
 //document middleware
-TourSchmea.pre('save', async function () {
+TourSchmea.pre('save', function () {
   this.slug = slugify(this.name, { lower: true });
 });
 
 //query middleware
-TourSchmea.pre(/^find/, async function () {
+TourSchmea.pre(/^find/, function () {
   // TourSchmea.pre('find', function (next) {
   this.find({ secretTour: { $ne: true } });
 });
 
+TourSchmea.pre(/^find/, function () {
+  this.populate({
+    path: 'guides',
+    select: 'name email role -_id',
+  });
+});
+
 //aggretation middleware
-TourSchmea.pre('aggregate', async function () {
+TourSchmea.pre('aggregate', function () {
   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
 });
 

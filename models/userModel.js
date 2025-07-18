@@ -143,6 +143,7 @@ userSchema.methods.toJSON = function () {
     'updatedAt',
     'loginAttempts',
     'lockUntil',
+    'failedRounds',
   ];
 
   hiddenFields.forEach((field) => delete obj[field]);
