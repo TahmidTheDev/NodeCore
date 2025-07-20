@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import slugify from 'slugify';
-import User from './userModel.js';
+
 // import validator from 'validator';
 
 const TourSchmea = new mongoose.Schema(
@@ -124,6 +124,13 @@ const TourSchmea = new mongoose.Schema(
 
 TourSchmea.virtual('durationWeeks').get(function () {
   return Number((this.duration / 7).toFixed(1));
+});
+
+//virtual populate
+TourSchmea.virtual('reviews', {
+  ref: 'Review',
+  foreignField: 'tour',
+  localField: '_id',
 });
 
 //document middleware

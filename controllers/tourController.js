@@ -39,7 +39,7 @@ export const getAllTours = async (req, res) => {
 // //app.get('/api/v1/tours', getAllTours);
 
 export const getTour = async (req, res) => {
-  const tour = await Tour.findById(req.params.id);
+  const tour = await Tour.findById(req.params.id).populate('reviews');
 
   if (!tour) {
     throw new AppError('tour could not be found with this ID', 404);
