@@ -1,4 +1,5 @@
 import express from 'express';
+
 import {
   getAllTours,
   getTour,
@@ -10,7 +11,7 @@ import {
   getMonthlyPlan,
 } from '../controllers/tourController.js';
 import { protect, restrictTo } from '../controllers/authController.js';
-
+import reviewRoutes from '../routes/reviewRoutes.js';
 const router = express.Router();
 
 // router.param('id', checkId);
@@ -27,5 +28,7 @@ router
   .get(getTour)
   .patch(updatetour)
   .delete(protect, restrictTo('admin', 'lead-guide'), deletetour);
+
+router.use('/:tourId/reviews', reviewRoutes);
 
 export default router;

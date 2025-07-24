@@ -126,6 +126,13 @@ TourSchmea.virtual('durationWeeks').get(function () {
   return Number((this.duration / 7).toFixed(1));
 });
 
+TourSchmea.pre(/^find/, function () {
+  this.populate({
+    path: 'guides',
+    select: 'name email role -_id',
+  });
+});
+
 //virtual populate
 TourSchmea.virtual('reviews', {
   ref: 'Review',
@@ -142,13 +149,6 @@ TourSchmea.pre('save', function () {
 TourSchmea.pre(/^find/, function () {
   // TourSchmea.pre('find', function (next) {
   this.find({ secretTour: { $ne: true } });
-});
-
-TourSchmea.pre(/^find/, function () {
-  this.populate({
-    path: 'guides',
-    select: 'name email role -_id',
-  });
 });
 
 //aggretation middleware

@@ -15,6 +15,7 @@ import {
   resetPassword,
   updatePassword,
   protect,
+  restrictTo,
 } from '../controllers/authController.js';
 
 const router = express.Router();
