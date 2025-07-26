@@ -4,9 +4,10 @@ import {
   createusers,
   getuser,
   updateuser,
-  deleteuser,
+  deleteUser,
   updateMe,
   deleteMe,
+  getMe,
 } from '../controllers/userController.js';
 import {
   signUp,
@@ -26,13 +27,21 @@ router.post('/login', login);
 router.post('/forgotPassword', forgotPassword);
 router.patch('/resetPassword/:token', resetPassword);
 
-router.patch('/updateMyPassword', protect, updatePassword);
+//from here all route will use protect
+router.use(protect);
 
-router.patch('/updateMe', protect, updateMe);
-router.delete('/deleteMe', protect, deleteMe);
+router.patch('/updateMyPassword', updatePassword);
+
+router.get('/me', getMe, getuser);
+
+router.patch('/updateMe', updateMe);
+router.delete('/deleteMe', deleteMe);
+
+//from here only admin can use this routes
+router.use(restrictTo('admin'));
 
 router.route('/').get(getallusers).post(createusers);
 
-router.route('/:id').get(getuser).patch(updateuser).delete(deleteuser);
+router.route('/:id').get(getuser).patch(updateuser).delete(deleteUser);
 
 export default router;

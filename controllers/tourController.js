@@ -1,11 +1,15 @@
 import Tour from '../models/tourModel.js';
-import APIFeatures from '../utilis/apiFeatures.js';
-import AppError from '../utilis/appError.js';
+
+import {
+  getAll,
+  deleteOne,
+  updateOne,
+  createOne,
+  getOne,
+} from './handlerFactory.js';
 
 // Middleware to preset query parameters for top 5 cheap tours
 export const aliasTopTours = (req, res, next) => {
-  console.log('✅ aliasTopTours middleware TRIGGERED');
-
   req.aliasQuery = {
     limit: 5,
     sort: '-ratingsAverage,price',
@@ -15,96 +19,46 @@ export const aliasTopTours = (req, res, next) => {
   next();
 };
 
-export const getAllTours = async (req, res) => {
-  const queryObj = req.aliasQuery || req.query;
+export const getAllTours = getAll(Tour);
+// export const getAllTours = async (req, res) => {
+//   const queryObj = req.aliasQuery || req.query;
 
-  const features = new APIFeatures(Tour.find(), queryObj)
-    .filter()
-    .sort()
-    .limitFields()
-    .paginate();
+//   const features = new APIFeatures(Tour.find(), queryObj)
+//     .filter()
+//     .sort()
+//     .limitFields()
+//     .paginate();
 
-  const tours = await features.query;
+//   const tours = await features.query;
 
-  // Send successful response
-  res.status(200).json({
-    status: 'success',
-    result: tours.length,
-    data: {
-      tours,
-    },
-  });
-};
+//   // Send successful response
+//   res.status(200).json({
+//     status: 'success',
+//     result: tours.length,
+//     data: {
+//       tours,
+//     },
+//   });
+// };
 
 // //app.get('/api/v1/tours', getAllTours);
 
-export const getTour = async (req, res) => {
-  const tour = await Tour.findById(req.params.id).populate('reviews');
+export const getTour = getOne(Tour, { path: 'reviews' });
+export const createtour = createOne(Tour);
+export const updatetour = updateOne(Tour);
+export const deletetour = deleteOne(Tour);
+// export const deletetour = async (req, res) => {
+//   const tour = await Tour.findByIdAndDelete(req.params.id);
 
-  if (!tour) {
-    throw new AppError('tour could not be found with this ID', 404);
-  }
+//   if (!tour) {
+//     throw new AppError('tour could not be found with this ID', 404);
+//   }
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      tour,
-    },
-  });
-};
-// //app.get('/api/v1/tours/:id', getTour);
-
-//Create request
-export const createtour = async (req, res) => {
-  const newTour = await Tour.create(req.body);
-
-  if (!newTour) {
-    throw new AppError('tour could not be created', 400);
-  }
-
-  res.status(201).json({
-    status: 'success',
-    data: {
-      tour: newTour,
-    },
-  });
-};
-//app.post('/api/v1/tours', createtour);
-export const updatetour = async (req, res) => {
-  const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-    context: 'query',
-  });
-
-  if (!tour) {
-    throw new AppError('tour could not be found updated this ID', 404);
-  }
-
-  res.status(201).json({
-    status: 'success',
-    data: {
-      tour,
-    },
-  });
-};
-//Update
-
-//app.patch('/api/v1/tours/:id', updatetour);
-
-//Delete
-export const deletetour = async (req, res) => {
-  const tour = await Tour.findByIdAndDelete(req.params.id);
-
-  if (!tour) {
-    throw new AppError('tour could not be found with this ID', 404);
-  }
-
-  res.status(201).json({
-    status: 'success',
-    data: null,
-  });
-};
+//   res.status(201).json({
+//     status: 'success',
+//     data: null,
+//   });
+// };
 
 export const getTourStats = async (req, res) => {
   const stats = await Tour.aggregate([

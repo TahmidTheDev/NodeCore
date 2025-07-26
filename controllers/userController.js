@@ -1,6 +1,7 @@
 import User from '../models/userModel.js';
 import AppError from '../utilis/appError.js';
 import catchAsync from '../utilis/catchAsync.js';
+import { deleteOne, updateOne, getOne, getAll } from './handlerFactory.js';
 
 const filterObj = (obj, ...allowedFields) => {
   const newObj = {};
@@ -10,17 +11,10 @@ const filterObj = (obj, ...allowedFields) => {
   return newObj;
 };
 
-export const getallusers = catchAsync(async (req, res, next) => {
-  const users = await User.find();
-
-  res.status(200).json({
-    status: 'success',
-    results: users.length,
-    data: {
-      users,
-    },
-  });
-});
+export const getMe = (req, res, next) => {
+  req.params.id = req.user.id;
+  next();
+};
 
 export const updateMe = catchAsync(async (req, res, next) => {
   //if user post password data
@@ -62,30 +56,15 @@ export const deleteMe = catchAsync(async (req, res, next) => {
   });
 });
 
-export const getuser = (req, res) => {
-  res.status(500).json({
-    status: 'error',
-    message: 'This route not implement',
-  });
-};
-
 export const createusers = (req, res) => {
   res.status(500).json({
     status: 'error',
-    message: 'This route not implement',
+    message: 'This route not implement please use signup instead',
   });
 };
 
-export const updateuser = (req, res) => {
-  res.status(500).json({
-    status: 'error',
-    message: 'This route not implement',
-  });
-};
-
-export const deleteuser = (req, res) => {
-  res.status(500).json({
-    status: 'error',
-    message: 'This route not implement',
-  });
-};
+export const getuser = getOne(User);
+export const getallusers = getAll(User);
+//do not update password with this update
+export const updateuser = updateOne(User);
+export const deleteUser = deleteOne(User);

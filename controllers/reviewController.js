@@ -1,24 +1,15 @@
 import Review from '../models/reviewModel.js';
 import AppError from '../utilis/appError.js';
 import catchAsync from '../utilis/catchAsync.js';
+import {
+  getAll,
+  deleteOne,
+  updateOne,
+  createOne,
+  getOne,
+} from './handlerFactory.js';
 
-export const getallReviews = catchAsync(async (req, res, next) => {
-  let filter = {};
-
-  if (req.params.tourId) filter = { tour: req.params.tourId };
-
-  const reviews = await Review.find(filter);
-
-  res.status(200).json({
-    status: 'success',
-    results: reviews.length,
-    data: {
-      reviews,
-    },
-  });
-});
-
-export const createReviews = catchAsync(async (req, res) => {
+export const setTourUserIds = (req, res, next) => {
   // Force user and tour ID from authenticated request, ignore body values
   //   const reviewData = {
   //   ...req.body,
@@ -27,19 +18,14 @@ export const createReviews = catchAsync(async (req, res) => {
   // };
 
   // const newReview = await Review.create(reviewData);
+
   if (!req.body.tour) req.body.tour = req.params.tourId;
   if (!req.body.user) req.body.user = req.user.id;
+  next();
+};
 
-  const newReview = await Review.create(req.body);
-
-  if (!newReview) {
-    throw new AppError('Reviews could not be created', 400);
-  }
-
-  res.status(201).json({
-    status: 'success',
-    data: {
-      review: newReview,
-    },
-  });
-});
+export const getallReviews = getAll(Review);
+export const getReview = getOne(Review);
+export const createReview = createOne(Review);
+export const deleteReview = deleteOne(Review);
+export const updateReview = updateOne(Review);
