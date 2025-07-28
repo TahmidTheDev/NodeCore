@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import Tour from './tourModel.js';
+
 const reviewSchema = new mongoose.Schema(
   {
     review: {
@@ -44,8 +46,52 @@ reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
 reviewSchema.pre(/^find/, function () {
   this.populate({
     path: 'user',
-    select: 'name email role ',
+    select: 'name photo ',
   });
+});
+
+//static method
+reviewSchema.statics.calcAverageRatings = async function (tourId) {
+  const stats = await this.aggregate([
+    {
+      $match: { tour: tourId },
+    },
+    {
+      $group: {
+        _id: '$tour',
+        nRating: { $sum: 1 },
+        avgRating: { $avg: '$rating' },
+      },
+    },
+  ]);
+
+  if (stats.length > 0) {
+    await Tour.findByIdAndUpdate(tourId, {
+      ratingsAverage: stats[0]?.avgRating,
+      ratingsQuantity: stats[0]?.nRating,
+    });
+  } else {
+    await Tour.findByIdAndUpdate(tourId, {
+      ratingsAverage: 4.5,
+      ratingsQuantity: 0,
+    });
+  }
+};
+
+reviewSchema.post('save', async function () {
+  // `this` refers to the saved review document
+  await this.constructor.calcAverageRatings(this.tour);
+});
+
+reviewSchema.pre(/^findOneAnd/, async function (next) {
+  this.r = await this.clone().findOne();
+});
+
+reviewSchema.post(/^findOneAnd/, async function (next) {
+  //await this.findOne(); can not use it beacuse query already executed
+  if (this.r) {
+    await this.r.constructor.calcAverageRatings(this.r.tour);
+  }
 });
 
 const Review = mongoose.model('Review', reviewSchema);
