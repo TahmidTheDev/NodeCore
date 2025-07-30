@@ -11,6 +11,7 @@ export const getAll = (Model) => async (req, res) => {
 
   const features = new APIFeatures(Model.find(filter), queryObj)
     .filter()
+    .search(['name', 'summary', 'description'])
     .sort()
     .limitFields()
     .paginate();

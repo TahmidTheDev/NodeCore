@@ -1,4 +1,6 @@
 import Tour from '../models/tourModel.js';
+import AppError from '../utilis/appError.js';
+import catchAsync from '../utilis/catchAsync.js';
 
 import {
   getAll,
@@ -47,19 +49,8 @@ export const getTour = getOne(Tour, { path: 'reviews' });
 export const createtour = createOne(Tour);
 export const updatetour = updateOne(Tour);
 export const deletetour = deleteOne(Tour);
-// export const deletetour = async (req, res) => {
-//   const tour = await Tour.findByIdAndDelete(req.params.id);
 
-//   if (!tour) {
-//     throw new AppError('tour could not be found with this ID', 404);
-//   }
-
-//   res.status(201).json({
-//     status: 'success',
-//     data: null,
-//   });
-// };
-
+//stats
 export const getTourStats = async (req, res) => {
   const stats = await Tour.aggregate([
     {
@@ -137,6 +128,33 @@ export const getMonthlyPlan = async (req, res) => {
   });
 };
 
+export const getToursWithin = catchAsync(async (req, res, next) => {
+  const { distance, latlng, unit } = req.params;
+  const [lat, lng] = latlng.split(',');
+
+  const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1;
+
+  if (!lat || !lng) {
+    next(
+      new AppError(
+        'Please provide latitude and longitude i the format lat and lng',
+        400
+      )
+    );
+  }
+
+  const tours = await Tour.find({
+    startLocation: { $geoWithin: { $centerSphere: [[lng, lat], radius] } },
+  }).lean();
+
+  res.status(200).json({
+    status: 'success',
+    results: tours.length,
+    data: {
+      data: tours,
+    },
+  });
+});
 // export const getAllTours = async (req, res) => {
 //   try {
 //     console.log('Query parameters:', req.query);
