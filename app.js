@@ -8,6 +8,9 @@ import helmet from 'helmet';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 import sanitizeMongoMiddleware from './santizeData/santizeMongo.js';
 import sanitizeXSSMiddleware from './santizeData/sanitizeXSS.js';
 import globalErrorHandler from './controllers/errorController.js';
@@ -18,10 +21,12 @@ import reviewRoutes from './routes/reviewRoutes.js';
 
 const app = express();
 
-app.use(helmet());
+app.set('view engine', 'pug');
+app.set('views', path.join(__dirname, 'views'));
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(helmet());
 
 console.log(process.env.NODE_ENV);
 if (process.env.NODE_ENV === 'development') {
@@ -44,8 +49,6 @@ app.use(express.json({ limit: '10kb' }));
 
 app.use(sanitizeMongoMiddleware);
 app.use(sanitizeXSSMiddleware);
-
-app.use(express.static(path.join(__dirname, 'public')));
 
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();

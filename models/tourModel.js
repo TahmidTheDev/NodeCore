@@ -157,9 +157,21 @@ TourSchmea.pre(/^find/, function () {
 });
 
 //aggretation middleware
-TourSchmea.pre('aggregate', function () {
+//if i use geoNear then geoNear will be first stage so we write this middleware condionally
+TourSchmea.pre('aggregate', function (next) {
+  // If the pipeline starts with $geoNear, skip adding $match
+  const firstStage = this.pipeline()[0];
+  if (firstStage && firstStage.$geoNear) {
+    return next();
+  }
+
+  // Otherwise, add $match to hide secret tours
   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
+  next();
 });
+// TourSchmea.pre('aggregate', function () {
+//   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
+// });
 
 // TourSchmea.post('save', function (doc, next) {
 //   console.log(doc);
