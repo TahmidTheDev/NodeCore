@@ -13,6 +13,7 @@ const __dirname = path.dirname(__filename);
 
 import sanitizeMongoMiddleware from './santizeData/santizeMongo.js';
 import sanitizeXSSMiddleware from './santizeData/sanitizeXSS.js';
+
 import globalErrorHandler from './controllers/errorController.js';
 import AppError from './utilis/appError.js';
 import tourRouter from './routes/tourRoutes.js';
@@ -21,11 +22,7 @@ import reviewRoutes from './routes/reviewRoutes.js';
 
 const app = express();
 
-app.set('view engine', 'pug');
-app.set('views', path.join(__dirname, 'views'));
-
-app.use(express.static(path.join(__dirname, 'public')));
-
+app.use(express.json());
 app.use(helmet());
 
 console.log(process.env.NODE_ENV);

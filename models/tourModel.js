@@ -134,7 +134,7 @@ TourSchmea.virtual('durationWeeks').get(function () {
 TourSchmea.pre(/^find/, function () {
   this.populate({
     path: 'guides',
-    select: 'name email role -_id',
+    select: 'name email photo role -_id',
   });
 });
 
