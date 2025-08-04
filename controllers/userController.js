@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import User from '../models/userModel.js';
 import AppError from '../utilis/appError.js';
 import catchAsync from '../utilis/catchAsync.js';
@@ -10,6 +11,21 @@ const filterObj = (obj, ...allowedFields) => {
   });
   return newObj;
 };
+
+export const resizeUserPhoto = catchAsync(async (req, res, next) => {
+  if (!req.file) return next();
+
+  // Custom filename
+  req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`;
+
+  await sharp(req.file.buffer)
+    .resize(500, 500)
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })
+    .toFile(`public/img/users/${req.file.filename}`);
+
+  next();
+});
 
 export const getMe = (req, res, next) => {
   req.params.id = req.user.id;

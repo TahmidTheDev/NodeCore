@@ -9,6 +9,7 @@ import {
   updateMe,
   deleteMe,
   getMe,
+  resizeUserPhoto,
 } from '../controllers/userController.js';
 import {
   signUp,
@@ -35,7 +36,7 @@ router.patch('/updateMyPassword', updatePassword);
 
 router.get('/me', getMe, getuser);
 
-router.patch('/updateMe', uploadUserPhoto, updateMe);
+router.patch('/updateMe', uploadUserPhoto, resizeUserPhoto, updateMe);
 router.delete('/deleteMe', deleteMe);
 
 //from here only admin can use this routes

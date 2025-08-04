@@ -1,18 +1,10 @@
 import multer from 'multer';
 import AppError from '../utilis/appError.js';
 
-// Storage configuration
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'public/img/users'); // Folder to save files
-  },
-  filename: (req, file, cb) => {
-    const ext = file.mimetype.split('/')[1]; // e.g. 'jpeg'
-    cb(null, `user-${req.user.id}-${Date.now()}.${ext}`);
-  },
-});
+// Store uploaded file in memory
+const multerStorage = multer.memoryStorage();
 
-// File filter
+// Accept image files only
 const fileFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image')) {
     cb(null, true);
@@ -23,7 +15,7 @@ const fileFilter = (req, file, cb) => {
 
 // Upload middleware
 const upload = multer({
-  storage: storage,
+  storage: multerStorage,
   fileFilter: fileFilter,
   limits: {
     fileSize: 1024 * 1024 * 2, // 2MB limit
