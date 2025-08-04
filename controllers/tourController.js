@@ -1,7 +1,6 @@
 import Tour from '../models/tourModel.js';
 import AppError from '../utilis/appError.js';
 import catchAsync from '../utilis/catchAsync.js';
-
 import {
   getAll,
   deleteOne,
@@ -10,47 +9,28 @@ import {
   getOne,
 } from './handlerFactory.js';
 
-// Middleware to preset query parameters for top 5 cheap tours
+/**
+ * Middleware to preset query parameters for top 5 cheap tours
+ */
 export const aliasTopTours = (req, res, next) => {
   req.aliasQuery = {
     limit: 5,
     sort: '-ratingsAverage,price',
     fields: 'name,price,ratingsAverage,difficulty,summary',
   };
-
   next();
 };
 
+// Use factory handlers for standard CRUD operations
 export const getAllTours = getAll(Tour);
-// export const getAllTours = async (req, res) => {
-//   const queryObj = req.aliasQuery || req.query;
-
-//   const features = new APIFeatures(Tour.find(), queryObj)
-//     .filter()
-//     .sort()
-//     .limitFields()
-//     .paginate();
-
-//   const tours = await features.query;
-
-//   // Send successful response
-//   res.status(200).json({
-//     status: 'success',
-//     result: tours.length,
-//     data: {
-//       tours,
-//     },
-//   });
-// };
-
-// //app.get('/api/v1/tours', getAllTours);
-
 export const getTour = getOne(Tour, { path: 'reviews' });
 export const createtour = createOne(Tour);
 export const updatetour = updateOne(Tour);
 export const deletetour = deleteOne(Tour);
 
-//stats
+/**
+ * Tour statistics aggregated by difficulty level
+ */
 export const getTourStats = async (req, res) => {
   const stats = await Tour.aggregate([
     {
@@ -70,10 +50,10 @@ export const getTourStats = async (req, res) => {
     {
       $sort: { minPrice: -1 },
     },
-    // {
-    //   $match: { _id: { $ne: 'EASY' } },
-    // },
+    // Optionally exclude a difficulty group:
+    // { $match: { _id: { $ne: 'EASY' } } },
   ]);
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -82,8 +62,12 @@ export const getTourStats = async (req, res) => {
   });
 };
 
+/**
+ * Get monthly tour plan for a specific year
+ */
 export const getMonthlyPlan = async (req, res) => {
   const year = Number(req.params.year);
+
   const plan = await Tour.aggregate([
     {
       $unwind: '$startDates',
@@ -112,14 +96,13 @@ export const getMonthlyPlan = async (req, res) => {
       },
     },
     {
-      $sort: {
-        numTourStarts: -1,
-      },
+      $sort: { numTourStarts: -1 },
     },
     {
       $limit: 12,
     },
   ]);
+
   res.status(200).json({
     status: 'success',
     data: {
@@ -128,20 +111,25 @@ export const getMonthlyPlan = async (req, res) => {
   });
 };
 
+/**
+ * Get tours within a given distance from coordinates
+ * Example: /tours-within/250/center/34.111745,-118.113491/unit/mi
+ */
 export const getToursWithin = catchAsync(async (req, res, next) => {
   const { distance, latlng, unit } = req.params;
   const [lat, lng] = latlng.split(',');
 
-  const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1;
-
   if (!lat || !lng) {
-    next(
+    return next(
       new AppError(
-        'Please provide latitude and longitude i the format lat and lng',
+        'Please provide latitude and longitude in the format lat,lng',
         400
       )
     );
   }
+
+  // Convert distance to radians
+  const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1;
 
   const tours = await Tour.find({
     startLocation: { $geoWithin: { $centerSphere: [[lng, lat], radius] } },
@@ -156,20 +144,24 @@ export const getToursWithin = catchAsync(async (req, res, next) => {
   });
 });
 
+/**
+ * Get distances to all tours from a given point
+ * Example: /distances/34.111745,-118.113491/unit/mi
+ */
 export const getDistances = catchAsync(async (req, res, next) => {
   const { latlng, unit } = req.params;
   const [lat, lng] = latlng.split(',');
 
-  const multiplier = unit === 'mi' ? 0.000621371 : 0.001;
-
   if (!lat || !lng) {
-    next(
+    return next(
       new AppError(
         'Please provide latitude and longitude in the format lat,lng',
         400
       )
     );
   }
+
+  const multiplier = unit === 'mi' ? 0.000621371 : 0.001;
 
   const distances = await Tour.aggregate([
     {
@@ -198,6 +190,7 @@ export const getDistances = catchAsync(async (req, res, next) => {
     },
   });
 });
+
 // export const getAllTours = async (req, res) => {
 //   try {
 //     console.log('Query parameters:', req.query);

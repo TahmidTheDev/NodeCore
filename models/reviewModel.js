@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 import Tour from './tourModel.js';
 
+// ------------------------------
+// Review Schema Definition
+// ------------------------------
 const reviewSchema = new mongoose.Schema(
   {
     review: {
@@ -33,29 +36,33 @@ const reviewSchema = new mongoose.Schema(
     },
   },
   {
-    // Auto add createdAt and updatedAt fields
     timestamps: true,
-
     toJSON: { virtuals: true, versionKey: false },
     toObject: { virtuals: true, versionKey: false },
   }
 );
 
+// ------------------------------
+// Compound index to prevent duplicate reviews per tour per user
+// ------------------------------
 reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
 
+// ------------------------------
+// Auto-populate user data in queries
+// ------------------------------
 reviewSchema.pre(/^find/, function () {
   this.populate({
     path: 'user',
-    select: 'name photo ',
+    select: 'name photo',
   });
 });
 
-//static method
+// ------------------------------
+// Static method to calculate tour average rating and quantity
+// ------------------------------
 reviewSchema.statics.calcAverageRatings = async function (tourId) {
   const stats = await this.aggregate([
-    {
-      $match: { tour: tourId },
-    },
+    { $match: { tour: tourId } },
     {
       $group: {
         _id: '$tour',
@@ -67,8 +74,8 @@ reviewSchema.statics.calcAverageRatings = async function (tourId) {
 
   if (stats.length > 0) {
     await Tour.findByIdAndUpdate(tourId, {
-      ratingsAverage: stats[0]?.avgRating,
-      ratingsQuantity: stats[0]?.nRating,
+      ratingsAverage: stats[0].avgRating,
+      ratingsQuantity: stats[0].nRating,
     });
   } else {
     await Tour.findByIdAndUpdate(tourId, {
@@ -78,21 +85,28 @@ reviewSchema.statics.calcAverageRatings = async function (tourId) {
   }
 };
 
+// ------------------------------
+// Middleware: Update tour stats after review creation
+// ------------------------------
 reviewSchema.post('save', async function () {
-  // `this` refers to the saved review document
   await this.constructor.calcAverageRatings(this.tour);
 });
 
-reviewSchema.pre(/^findOneAnd/, async function (next) {
-  this.r = await this.clone().findOne();
+// ------------------------------
+// Middleware: Track doc on update/delete to recalculate ratings
+// ------------------------------
+reviewSchema.pre(/^findOneAnd/, async function () {
+  this.r = await this.clone().findOne(); // Save doc reference before update/delete
 });
 
-reviewSchema.post(/^findOneAnd/, async function (next) {
-  //await this.findOne(); can not use it beacuse query already executed
+reviewSchema.post(/^findOneAnd/, async function () {
   if (this.r) {
     await this.r.constructor.calcAverageRatings(this.r.tour);
   }
 });
 
+// ------------------------------
+// Export model
+// ------------------------------
 const Review = mongoose.model('Review', reviewSchema);
 export default Review;

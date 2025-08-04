@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
 import slugify from 'slugify';
+// import validator from 'validator'; // Uncomment if needed later
 
-// import validator from 'validator';
-
-const TourSchmea = new mongoose.Schema(
+// ------------------------------
+// Tour Schema Definition
+// ------------------------------
+const TourSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -12,9 +14,10 @@ const TourSchmea = new mongoose.Schema(
       minlength: [3, 'Name must be at least 3 characters'],
       maxlength: [100, 'Name must be less than 100 characters'],
       unique: true,
-      // validate: [validator.isAlpha, 'tour name only contain character'],
+      // validate: [validator.isAlpha, 'Tour name should contain only characters'],
     },
     slug: String,
+
     duration: {
       type: Number,
       required: [true, 'A tour must have a duration'],
@@ -28,7 +31,7 @@ const TourSchmea = new mongoose.Schema(
       required: [true, 'A tour must have a difficulty'],
       enum: {
         values: ['easy', 'medium', 'difficult'],
-        message: 'Difficulty is either: easy, medium, or difficult',
+        message: 'Difficulty must be: easy, medium, or difficult',
       },
     },
     price: {
@@ -39,7 +42,7 @@ const TourSchmea = new mongoose.Schema(
     priceDiscount: {
       type: Number,
       validate: {
-        validator: function (val) {
+        validator(val) {
           return val < this.price;
         },
         message:
@@ -51,7 +54,7 @@ const TourSchmea = new mongoose.Schema(
       default: 4.5,
       min: [1, 'Rating must be above 1.0'],
       max: [5, 'Rating must be below 5.0'],
-      set: (val) => Math.round(val * 10) / 10,
+      set: (val) => Math.round(val * 10) / 10, // Round to 1 decimal
     },
     ratingsQuantity: {
       type: Number,
@@ -80,19 +83,24 @@ const TourSchmea = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    // GeoJSON format for geospatial queries
     startLocation: {
       type: {
         type: String,
         default: 'Point',
         enum: ['Point'],
+        required: [true, 'Start location type is required'],
       },
       coordinates: {
         type: [Number], // [longitude, latitude]
-        // required: true,
+        required: [true, 'Start location coordinates are required'],
       },
       address: String,
       description: String,
     },
+
+    // Embedded location data for itinerary
     locations: [
       {
         type: {
@@ -101,18 +109,19 @@ const TourSchmea = new mongoose.Schema(
           enum: ['Point'],
         },
         coordinates: {
-          type: [Number], // [longitude, latitude]
-          // required: true,
+          type: [Number],
         },
         address: String,
         description: String,
         day: Number,
       },
     ],
+
+    // References to User guides
     guides: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User', // Reference to the User model
+        ref: 'User',
       },
     ],
   },
@@ -123,61 +132,70 @@ const TourSchmea = new mongoose.Schema(
   }
 );
 
-TourSchmea.index({ price: 1, ratingsAverage: -1 });
-TourSchmea.index({ slug: 1 });
-TourSchmea.index({ startLocation: '2dsphere' });
+// ------------------------------
+// Indexes for performance
+// ------------------------------
+TourSchema.index({ price: 1, ratingsAverage: -1 });
+TourSchema.index({ slug: 1 });
+TourSchema.index({ startLocation: '2dsphere' });
 
-TourSchmea.virtual('durationWeeks').get(function () {
+// ------------------------------
+// Virtual fields
+// ------------------------------
+
+// Duration in weeks (derived field)
+TourSchema.virtual('durationWeeks').get(function () {
   return Number((this.duration / 7).toFixed(1));
 });
 
-TourSchmea.pre(/^find/, function () {
+// Virtual populate: link to reviews
+TourSchema.virtual('reviews', {
+  ref: 'Review',
+  foreignField: 'tour',
+  localField: '_id',
+});
+
+// ------------------------------
+// Document Middleware
+// ------------------------------
+
+// Generate slug from tour name before saving
+TourSchema.pre('save', function () {
+  this.slug = slugify(this.name, { lower: true });
+});
+
+// ------------------------------
+// Query Middleware
+// ------------------------------
+
+// Hide secret tours on all find queries
+TourSchema.pre(/^find/, function () {
+  this.find({ secretTour: { $ne: true } });
+});
+
+// Auto-populate guide info on find queries
+TourSchema.pre(/^find/, function () {
   this.populate({
     path: 'guides',
     select: 'name email photo role -_id',
   });
 });
 
-//virtual populate
-TourSchmea.virtual('reviews', {
-  ref: 'Review',
-  foreignField: 'tour',
-  localField: '_id',
-});
+// ------------------------------
+// Aggregation Middleware
+// ------------------------------
 
-//document middleware
-TourSchmea.pre('save', function () {
-  this.slug = slugify(this.name, { lower: true });
-});
-
-//query middleware
-TourSchmea.pre(/^find/, function () {
-  // TourSchmea.pre('find', function (next) {
-  this.find({ secretTour: { $ne: true } });
-});
-
-//aggretation middleware
-//if i use geoNear then geoNear will be first stage so we write this middleware condionally
-TourSchmea.pre('aggregate', function (next) {
-  // If the pipeline starts with $geoNear, skip adding $match
+// Exclude secret tours from aggregations (unless geoNear is first stage)
+TourSchema.pre('aggregate', function (next) {
   const firstStage = this.pipeline()[0];
-  if (firstStage && firstStage.$geoNear) {
-    return next();
-  }
+  if (firstStage && firstStage.$geoNear) return next();
 
-  // Otherwise, add $match to hide secret tours
   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
   next();
 });
-// TourSchmea.pre('aggregate', function () {
-//   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
-// });
 
-// TourSchmea.post('save', function (doc, next) {
-//   console.log(doc);
-//   next();
-// });
-
-const Tour = mongoose.model('Tour', TourSchmea);
-
+// ------------------------------
+// Model Export
+// ------------------------------
+const Tour = mongoose.model('Tour', TourSchema);
 export default Tour;
