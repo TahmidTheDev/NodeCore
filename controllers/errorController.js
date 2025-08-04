@@ -1,3 +1,5 @@
+import multer from 'multer';
+import AppError from '../utilis/appError.js';
 import {
   handleCastErrorDB,
   handleDuplicateFieldsDB,
@@ -6,6 +8,7 @@ import {
   tokenExpiredError,
 } from '../utilis/errorHandlers.js';
 
+// Send detailed error in development
 const sendErrorDev = (err, res) => {
   res.status(err.statusCode).json({
     status: err.status,
@@ -15,34 +18,50 @@ const sendErrorDev = (err, res) => {
   });
 };
 
+// Send user-friendly error in production
 const sendErrorProd = (err, res) => {
+  // Trusted operational error: send message to client
   if (err.isOperational) {
-    res.status(err.statusCode).json({
+    return res.status(err.statusCode).json({
       status: err.status,
       message: err.message,
     });
-  } else {
-    console.error('ERROR 💥', err);
-    res.status(500).json({
-      status: 'error',
-      message: 'Something went very wrong!',
-    });
   }
+
+  // Programming or unknown error: don't leak details
+  console.error('ERROR 💥', err);
+  return res.status(500).json({
+    status: 'error',
+    message: 'Something went very wrong!',
+  });
 };
 
+// Global error handling middleware
 const globalErrorHandler = (err, req, res, next) => {
-  // Set default values on original error
+  // Default error values
   err.statusCode = err.statusCode || 500;
   err.status = err.status || 'error';
 
+  // ✅ Handle Multer file upload errors before anything else
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      err = new AppError('File too large. Max allowed size is 500KB.', 400);
+    } else {
+      err = new AppError(err.message, 400);
+    }
+  }
+
+  // Development: show full error details
   if (process.env.NODE_ENV === 'development') {
-    // In development, return full original error
     return sendErrorDev(err, res);
-  } else if (process.env.NODE_ENV === 'production') {
-    // Create a safe shallow clone
+  }
+
+  // Production: handle known errors gracefully
+  if (process.env.NODE_ENV === 'production') {
+    // Shallow clone to avoid mutating original error
     let error = { ...err };
 
-    // Copy important non-enumerable properties manually
+    // Manually copy non-enumerable properties
     error.message = err.message;
     error.name = err.name;
     error.code = err.code;
@@ -50,24 +69,23 @@ const globalErrorHandler = (err, req, res, next) => {
     error.statusCode = err.statusCode;
     error.status = err.status;
 
-    // Handle known Mongoose errors
+    // Mongoose/MongoDB specific errors
     if (error.name === 'CastError') error = handleCastErrorDB(error);
-
     if (error.code === 11000) error = handleDuplicateFieldsDB(error);
-
     if (error.name === 'ValidationError')
       error = handleValidationErrorDB(error);
 
+    // JWT errors
     if (error.name === 'JsonWebTokenError') error = jsonWebTokenError();
+    if (error.name === 'TokenExpiredError') error = tokenExpiredError();
 
-    if (err.name === 'TokenExpiredError') error = tokenExpiredError();
-
-    // Send production-appropriate response
+    // Send safe response to client
     return sendErrorProd(error, res);
   }
 };
 
 export default globalErrorHandler;
+
 //legacy code
 // const globalErrorHandler = (err, req, res, next) => {
 //   let error = { ...err, message: err.message };

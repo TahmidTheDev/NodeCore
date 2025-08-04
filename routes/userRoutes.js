@@ -1,4 +1,5 @@
 import express from 'express';
+import { uploadUserPhoto } from '../controllers/upload.js';
 import {
   getallusers,
   createusers,
@@ -34,7 +35,7 @@ router.patch('/updateMyPassword', updatePassword);
 
 router.get('/me', getMe, getuser);
 
-router.patch('/updateMe', updateMe);
+router.patch('/updateMe', uploadUserPhoto, updateMe);
 router.delete('/deleteMe', deleteMe);
 
 //from here only admin can use this routes
