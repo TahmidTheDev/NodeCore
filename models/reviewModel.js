@@ -48,7 +48,8 @@ const reviewSchema = new mongoose.Schema(
 reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
 
 // ------------------------------
-// Auto-populate user data in queries
+//Query Middleware: runs before any 'find' query (find, findOne, etc.)
+//Populates the 'user' field with 'name' and 'photo' from referenced user documents
 // ------------------------------
 reviewSchema.pre(/^find/, function () {
   this.populate({
@@ -87,6 +88,7 @@ reviewSchema.statics.calcAverageRatings = async function (tourId) {
 
 // ------------------------------
 // Middleware: Update tour stats after review creation
+//Document Middleware: runs after a new review document is saved
 // ------------------------------
 reviewSchema.post('save', async function () {
   await this.constructor.calcAverageRatings(this.tour);
@@ -95,10 +97,14 @@ reviewSchema.post('save', async function () {
 // ------------------------------
 // Middleware: Track doc on update/delete to recalculate ratings
 // ------------------------------
+// Query Middleware: runs before findOneAndUpdate/findOneAndDelete
+// Saves the document being updated/deleted for use in post middleware
 reviewSchema.pre(/^findOneAnd/, async function () {
   this.r = await this.clone().findOne(); // Save doc reference before update/delete
 });
 
+// Query Middleware: runs after findOneAndUpdate/findOneAndDelete
+// Uses saved doc reference to recalculate tour ratings
 reviewSchema.post(/^findOneAnd/, async function () {
   if (this.r) {
     await this.r.constructor.calcAverageRatings(this.r.tour);

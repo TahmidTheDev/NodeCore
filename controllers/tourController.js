@@ -1,4 +1,5 @@
 import Tour from '../models/tourModel.js';
+import sharp from 'sharp';
 import AppError from '../utilis/appError.js';
 import catchAsync from '../utilis/catchAsync.js';
 import {
@@ -8,6 +9,38 @@ import {
   createOne,
   getOne,
 } from './handlerFactory.js';
+
+export const resizeTourImages = catchAsync(async (req, res, next) => {
+  if (!req.files?.imageCover || !req.files?.images) return next();
+
+  // 1) Process cover image
+  req.body.imageCover = `tour-${req.params.id}-${Date.now()}-cover.jpeg`;
+
+  await sharp(req.files.imageCover[0].buffer)
+    .resize(2000, 1333)
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })
+    .toFile(`public/img/tours/${req.body.imageCover}`);
+
+  // 2) Process gallery images
+  req.body.images = [];
+
+  await Promise.all(
+    req.files.images.map(async (file, i) => {
+      const filename = `tour-${req.params.id}-${Date.now()}-${i + 1}.jpeg`;
+
+      await sharp(file.buffer)
+        .resize(2000, 1333)
+        .toFormat('jpeg')
+        .jpeg({ quality: 90 })
+        .toFile(`public/img/tours/${filename}`);
+
+      req.body.images.push(filename);
+    })
+  );
+
+  next();
+});
 
 /**
  * Middleware to preset query parameters for top 5 cheap tours

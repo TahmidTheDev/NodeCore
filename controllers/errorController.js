@@ -43,12 +43,27 @@ const globalErrorHandler = (err, req, res, next) => {
   err.status = err.status || 'error';
 
   // ✅ Handle Multer file upload errors before anything else
-  if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      err = new AppError('File too large. Max allowed size is 500KB.', 400);
-    } else {
-      err = new AppError(err.message, 400);
+  if (err instanceof multer.MulterError && err.code) {
+    let message;
+
+    switch (err.code) {
+      case 'LIMIT_FILE_SIZE':
+        message = 'File too large. Max allowed size is 2MB.';
+        break;
+      case 'LIMIT_UNEXPECTED_FILE':
+        if (err.field === 'imageCover') {
+          message = 'Too many imageCover files uploaded. Maximum is 1.';
+        } else if (err.field === 'images') {
+          message = 'Too many images uploaded. Maximum is 3.';
+        } else {
+          message = `Unexpected file field: ${err.field}`;
+        }
+        break;
+      default:
+        message = err.message;
     }
+
+    err = new AppError(message, 400);
   }
 
   // Development: show full error details

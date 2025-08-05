@@ -1,4 +1,5 @@
 import express from 'express';
+import { uploadTourImages } from '../controllers/upload.js';
 
 import {
   getAllTours,
@@ -11,6 +12,7 @@ import {
   getMonthlyPlan,
   getToursWithin,
   getDistances,
+  resizeTourImages,
 } from '../controllers/tourController.js';
 import { protect, restrictTo } from '../controllers/authController.js';
 import reviewRoutes from '../routes/reviewRoutes.js';
@@ -39,7 +41,13 @@ router.route('/distances/:latlng/unit/:unit').get(getDistances);
 router
   .route('/:id')
   .get(getTour)
-  .patch(protect, restrictTo('admin', 'lead-guide'), updatetour)
+  .patch(
+    protect,
+    restrictTo('admin', 'lead-guide'),
+    uploadTourImages,
+    resizeTourImages,
+    updatetour
+  )
   .delete(protect, restrictTo('admin', 'lead-guide'), deletetour);
 
 router.use('/:tourId/reviews', reviewRoutes);
