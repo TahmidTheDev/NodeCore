@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { promisify } from 'util';
 import AppError from '../utilis/appError.js';
-import sendEmail from '../utilis/email.js';
+import Email from '../utilis/email.js';
 import catchAsync from '../utilis/catchAsync.js';
 
 // Generate a JWT token
@@ -51,6 +51,15 @@ export const signUp = catchAsync(async (req, res, next) => {
 
   if (!newUser) {
     return next(new AppError('User could not be created', 400));
+  }
+
+  try {
+    // 🟢 Send welcome email using Email class
+    const url = `${req.protocol}://${req.get('host')}/me`;
+    await new Email(newUser, url).sendWelcome();
+  } catch (err) {
+    console.error('Welcome email failed:', err.message);
+    // Don't block user registration on email failure
   }
 
   createSendToken(newUser, 201, res);
@@ -195,14 +204,17 @@ export const forgotPassword = catchAsync(async (req, res, next) => {
     'host'
   )}/api/v1/users/resetPassword/${resetToken}`;
 
-  const message = `Forgot your password? Click here to reset: ${resetURL}`;
+  // const message = `Forgot your password? Click here to reset: ${resetURL}`;
 
+  // try {
+  //   await sendEmail({
+  //     email: user.email,
+  //     subject: 'Your password reset token (valid for 10 minutes)',
+  //     message,
+  //   });
   try {
-    await sendEmail({
-      email: user.email,
-      subject: 'Your password reset token (valid for 10 minutes)',
-      message,
-    });
+    // 🟢 Send reset email using Email class
+    await new Email(user, resetURL).sendPasswordReset();
 
     createSendToken(user, 200, res);
   } catch (err) {
